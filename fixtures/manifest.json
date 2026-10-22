@@ -1,0 +1,36 @@
+{
+  "provenance": "Synthetic arithmetic fixtures created for independent QA; WASM compiled using public Javy 3.0.1 on macOS; portable execution previously verified on Mac and Linux.",
+  "package_under_test": "@rotifer/playground@0.30.0",
+  "files": [
+    {
+      "path": "fixtures/qa-add/index.ts",
+      "sha256": "b0cb18405f704ab40d8db3d1343e993a85bc1b0b5322a08833f1baa94045ceb9",
+      "bytes": 63
+    },
+    {
+      "path": "fixtures/qa-add/phenotype.json",
+      "sha256": "4e4b03e1eb508a0e6eaa9ad209d43eb0b9fe24a0843aad8fe456462d46fa7c80",
+      "bytes": 295
+    },
+    {
+      "path": "fixtures/qa-add/gene.ir.wasm",
+      "sha256": "0cded58eaa124beda877a7f37ad930a972acf12499309b27a52fce8f68171265",
+      "bytes": 1228164
+    },
+    {
+      "path": "fixtures/qa-double/index.ts",
+      "sha256": "b64a7124df10240bd584ea0f8ddd85b475dc64cb226b3dd10da64ffbd446a9bd",
+      "bytes": 63
+    },
+    {
+      "path": "fixtures/qa-double/phenotype.json",
+      "sha256": "4e4b03e1eb508a0e6eaa9ad209d43eb0b9fe24a0843aad8fe456462d46fa7c80",
+      "bytes": 295
+    },
+    {
+      "path": "fixtures/qa-double/gene.ir.wasm",
+      "sha256": "fc00e3fa5c661d288b55dfdaa170a6ce64fea9d07b8b84ec566d1f2c9b1f9de9",
+      "bytes": 1228175
+    }
+  ]
+}

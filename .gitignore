@@ -1,0 +1,7 @@
+.env
+.env.*
+.wrangler/
+.temp/
+node_modules/
+results/
+qa-tmp/

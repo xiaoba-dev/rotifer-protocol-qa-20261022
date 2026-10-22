@@ -1,0 +1,14 @@
+{
+  "domain": "test.arithmetic",
+  "version": "0.1.0",
+  "fidelity": "Native",
+  "transparency": "OPEN",
+  "createdAt": 0,
+  "inputSchema": {
+    "type": "object"
+  },
+  "outputSchema": {
+    "type": "object"
+  },
+  "irHash": "8ac309d878f1e75459579a217c57f80d32663366bc18329e4cae343bfcd3e944"
+}
