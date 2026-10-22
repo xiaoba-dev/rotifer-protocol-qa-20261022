@@ -8,7 +8,7 @@ const result={source:'rotifer-protocol/rotifer-playground',commit:'e21eaac1aa355
 function scrub(s){return s.replace(/\beyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\b/g,'[local JWT omitted]').replace(/\bsb_(?:secret|publishable)_[A-Za-z0-9_-]+\b/g,'[local key omitted]').replace(/postgres(?:ql)?:\/\/[^\s"']+/g,'[local connection string omitted]').replace(/^(.*(?:anon key|service.role key|secret key|publishable key|JWT secret|Secret|Publishable).*?)[│: ]+[A-Za-z0-9_\-.]{20,}.*$/gim,'[local key field omitted]');}
 function run(label,cmd,args,cwd=temp,timeout=240000){const at=performance.now();const r=cp.spawnSync(cmd,args,{cwd,env,encoding:'utf8',timeout,maxBuffer:24*1024*1024});const output=scrub((r.stdout||'')+(r.stderr||''));result.commands.push({label,exit_code:r.status,error:r.error?.code||null,elapsed_ms:performance.now()-at,output});console.log('\nCOMMAND '+label+'\n'+output);return {...r,output};}
 function check(name,passed,detail=null){result.checks.push({name,passed:Boolean(passed),detail});console.log(JSON.stringify({check:name,passed:Boolean(passed),detail}));}
-let sb=null,work=null,network=false;
+let sb=null,work=null,network=false,subnet=null;
 try{
  const upstream=path.join(temp,'upstream');
  let r=run('clone public source','git',['clone','--no-checkout','--filter=blob:none','https://github.com/rotifer-protocol/rotifer-playground.git',upstream]);if(r.status!==0)throw Error('Public source checkout prerequisite failed');
@@ -25,7 +25,16 @@ try{
  fs.cpSync(path.join(upstream,'supabase/migrations'),path.join(work,'supabase/migrations'),{recursive:true});
  const config=fs.readFileSync(path.join(work,'supabase/config.toml'),'utf8');
  check('original production project configuration not copied',/project_id\s*=\s*"fresh-backend"/.test(config) && !fs.existsSync(path.join(work,'supabase/.temp/project-ref')));
- r=run('create isolated Docker network','docker',['network','create','--internal','rotifer-qa-isolated']);network=r.status===0;if(!network)throw Error('Cannot enforce database egress isolation');
+ r=run('create dedicated Docker network','docker',['network','create','rotifer-qa-isolated']);network=r.status===0;if(!network)throw Error('Cannot prepare dedicated database network');
+ r=run('read dedicated network subnet','docker',['network','inspect','--format','{{(index .IPAM.Config 0).Subnet}}','rotifer-qa-isolated']);subnet=r.output.trim();
+ if(r.status!==0 || !/^\d+\.\d+\.\d+\.\d+\/\d+$/.test(subnet))throw Error('Dedicated IPv4 subnet could not be verified');
+ // Preserve localhost port mapping for the CLI while refusing NEW outbound
+ // connections from containers. Local service traffic and replies are allowed.
+ r=run('allow local container traffic','sudo',['iptables','-I','DOCKER-USER','1','-s',subnet,'-d',subnet,'-j','RETURN']);if(r.status!==0)throw Error('Cannot enforce local network allow rule');
+ r=run('deny new external container connections','sudo',['iptables','-I','DOCKER-USER','2','-s',subnet,'-m','conntrack','--ctstate','NEW','-j','DROP']);if(r.status!==0)throw Error('Cannot enforce external egress deny rule');
+ r=run('verify effective egress deny rule','sudo',['iptables','-C','DOCKER-USER','-s',subnet,'-m','conntrack','--ctstate','NEW','-j','DROP']);if(r.status!==0)throw Error('External egress deny rule is missing');
+ r=run('verify container cannot reach public HTTPS','docker',['run','--rm','--network','rotifer-qa-isolated','node:22.19.0-bookworm-slim','node','-e',"fetch('https://example.com',{signal:AbortSignal.timeout(5000)}).then(()=>{console.log('unexpected public connection');process.exitCode=42}).catch(e=>{console.log('public HTTPS refused: '+e.name)})"]);
+ check('public HTTPS unreachable from test containers',r.status===0 && /public HTTPS refused/.test(r.output));if(r.status!==0 || !/public HTTPS refused/.test(r.output))throw Error('Container egress isolation probe failed');
  // The DB, scheduled functions and their hooks cannot connect to production services.
  r=run('replay on fresh local Supabase stack',sb,['start','--network-id','rotifer-qa-isolated','--exclude','studio,logflare,vector,imgproxy,edge-runtime,realtime,supavisor,mailpit'],work,600000);
  result.replay_exit=r.status;result.last_migration=[...r.output.matchAll(/Applying migration (\S+\.sql)/g)].at(-1)?.[1]||null;
@@ -41,6 +50,7 @@ try{
 }catch(e){check('replay setup completed',false,String(e));}
 finally{
  if(sb&&work)run('stop disposable local stack',sb,['stop','--no-backup'],work,120000);
+ if(subnet){run('remove external deny rule','sudo',['iptables','-D','DOCKER-USER','-s',subnet,'-m','conntrack','--ctstate','NEW','-j','DROP']);run('remove local allow rule','sudo',['iptables','-D','DOCKER-USER','-s',subnet,'-d',subnet,'-j','RETURN']);}
  if(network)run('remove disposable network','docker',['network','rm','rotifer-qa-isolated']);
  result.finished_at_utc=new Date().toISOString();result.passed=result.checks.length>0&&result.checks.every(x=>x.passed);
  console.log('ROTIFER_SCHEMA_QA_RESULT_BEGIN\n'+JSON.stringify(result)+'\nROTIFER_SCHEMA_QA_RESULT_END');

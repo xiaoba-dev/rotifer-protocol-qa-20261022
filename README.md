@@ -9,6 +9,6 @@ The portable WASM fixtures were compiled from the adjacent arithmetic sources us
 
 No protocol service credentials are supplied. Host Node HTTP requests are restricted to GET/HEAD/OPTIONS. Automatic publishing and telemetry are disabled. The workflows run manually, without paid runners, paid services, or uploaded Actions artifacts. Results are emitted into job logs and the job summary.
 
-The separate backend preflight uses a standard Ubuntu runner, Supabase CLI 2.121.0, a newly generated local configuration, and the unchanged 89 active migrations from the pinned public source commit. Containers use an internal Docker network to prevent scheduled SQL or hooks from contacting existing services. This is a local deployment-replay check, not evidence of a functioning cloud deployment or real OAuth.
+The separate backend preflight uses a standard Ubuntu runner, Supabase CLI 2.121.0, a newly generated local configuration, and the unchanged 89 active migrations from the pinned public source commit. Containers use a dedicated Docker network with an outbound connection deny rule, verified by a live HTTPS refusal probe, to prevent scheduled SQL or hooks from contacting existing services. Local service connections and localhost access remain available. This is a local deployment-replay check, not evidence of a functioning cloud deployment or real OAuth.
 
 Independent QA harness and synthetic arithmetic fixtures: MIT License. Javy-generated WebAssembly embeds third-party runtime components under their respective upstream licenses; see NOTICE.md.
